@@ -1,0 +1,196 @@
+ {% extends "base.html" %}
+
+{% block title %}Autonomous Intelligence Command Center — EventOps AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-card {
+        border: none;
+        border-radius: 1.25rem;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+    }
+    .admin-header {
+        background: linear-gradient(135deg, #1877f2 0%, #6338e8 55%, #7c3aed 100%);
+        color: #ffffff;
+        padding: 1.35rem 1.85rem;
+        border: none;
+    }
+    .admin-header h4 {
+        font-weight: 700;
+        letter-spacing: -0.2px;
+        font-size: 1.35rem;
+    }
+    .metric-box {
+        background: #ffffff;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .metric-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+    .agent-card {
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        transition: all 0.2s ease;
+    }
+    .agent-card:hover {
+        border-color: #93c5fd;
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.08);
+    }
+    .status-pulse {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .status-pulse.active {
+        background-color: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+    }
+    .status-pulse.idle {
+        background-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card admin-card mb-5">
+    <!-- Header -->
+    <div class="card-header admin-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-cpu fs-3"></i>
+            <div>
+                <h4 class="mb-0">Autonomous Intelligence Command Center</h4>
+                <small class="text-white-50">Multi-Agent Orchestration & Real-Time Telemetry</small>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge rounded-pill px-3 py-2 fw-medium text-white" style="background: rgba(255,255,255,0.2);">
+                <i class="bi bi-clock-history me-1"></i> Synced: {{ last_updated }}
+            </span>
+            <button class="btn btn-sm btn-light rounded-pill px-3 fw-medium text-primary" onclick="window.location.reload();">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Telemetry
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+        <!-- Top Metrics Overview -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4 col-xl-2">
+                <div class="metric-box text-center">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Health Score</div>
+                    <div class="display-6 fw-bold text-success mb-1">{{ health_score }}%</div>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2">Optimal</span>
+                </div>
+            </div>
+            <div class="col-md-4 col-xl-2">
+                <div class="metric-box text-center">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Active Agents</div>
+                    <div class="display-6 fw-bold text-primary mb-1">{{ active_agents }}/{{ total_agents }}</div>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2">Fully Online</span>
+                </div>
+            </div>
+            <div class="col-md-4 col-xl-2">
+                <div class="metric-box text-center">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Checked-In</div>
+                    <div class="display-6 fw-bold text-info mb-1">{{ checked_in }}</div>
+                    <span class="badge bg-info-subtle text-info rounded-pill px-2">of {{ total_registrations }} total</span>
+                </div>
+            </div>
+            <div class="col-md-4 col-xl-2">
+                <div class="metric-box text-center">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Open Incidents</div>
+                    <div class="display-6 fw-bold text-danger mb-1">{{ open_incidents }}</div>
+                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2">{{ resolved_incidents }} resolved</span>
+                </div>
+            </div>
+            <div class="col-md-4 col-xl-2">
+                <div class="metric-box text-center">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Task Completion</div>
+                    <div class="display-6 fw-bold text-dark mb-1">{{ task_completion }}%</div>
+                    <span class="badge bg-light text-dark border rounded-pill px-2">{{ tasks_completed }}/{{ tasks_total }}</span>
+                </div>
+            </div>
+            <div class="col-md-4 col-xl-2">
+                <div class="metric-box text-center">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Sponsor ROI</div>
+                    <div class="display-6 fw-bold text-warning-emphasis mb-1">{{ sponsor_roi }}%</div>
+                    <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2">{{ sponsor_count }} Partners</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Autonomous Agent Fleet Grid -->
+        <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-robot text-primary"></i>
+            Autonomous Event Intelligence Agent Fleet
+        </h5>
+
+        <div class="row g-3 mb-4">
+            {% for agent in agents %}
+            <div class="col-md-6 col-lg-4">
+                <div class="agent-card p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="status-pulse {{ agent.status }}"></span>
+                            <span class="fw-bold text-dark">{{ agent.name }} Agent</span>
+                        </div>
+                        <span class="badge rounded-pill {{ 'bg-success' if agent.status == 'active' else 'bg-warning text-dark' }} px-3 py-1">
+                            {{ agent.status|capitalize }}
+                        </span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Agent Efficiency Score</span>
+                            <span class="fw-bold text-dark">{{ agent.score }}/100</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ agent.score }}%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 small text-secondary border-top pt-2">
+                        <div class="col-6">
+                            <span class="text-muted">Tasks Run:</span> <strong class="text-dark">{{ agent.tasks_processed }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Success Rate:</span> <strong class="text-success">{{ agent.success_rate }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">CPU / RAM:</span> <strong class="text-dark">{{ agent.cpu }} / {{ agent.memory }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Uptime:</span> <strong class="text-dark">{{ agent.uptime }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Telemetry Summary Card -->
+        <div class="p-3 bg-light rounded-4 border">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="fw-bold text-dark mb-1"><i class="bi bi-shield-check text-success me-1"></i> Autonomous Operations Active</h6>
+                    <p class="text-muted small mb-0">EventOps AI continuously monitors registrations, venue capacity thresholds, speaker schedules, sponsor commitments, and venue incidents.</p>
+                </div>
+                <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                    <a href="{{ url_for('assistant_page') }}" class="btn btn-primary rounded-pill px-4 fw-medium shadow-xs">
+                        <i class="bi bi-chat-dots me-1"></i> Open Assistant Interface
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

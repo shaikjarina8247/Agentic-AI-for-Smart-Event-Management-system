@@ -1,0 +1,228 @@
+ {% extends "base.html" %}
+
+{% block title %}Incident Management & Dispatch — EventOps AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-card {
+        border: none;
+        border-radius: 1.25rem;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+    }
+    .admin-header {
+        background: linear-gradient(135deg, #1877f2 0%, #6338e8 55%, #7c3aed 100%);
+        color: #ffffff;
+        padding: 1.35rem 1.85rem;
+        border: none;
+    }
+    .admin-header h4 {
+        font-weight: 700;
+        letter-spacing: -0.2px;
+        font-size: 1.35rem;
+    }
+    .stat-chip-item {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 50px;
+        padding: 0.38rem 1rem;
+        font-size: 0.88rem;
+        font-weight: 500;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .search-input-wrapper {
+        position: relative;
+    }
+    .search-input-wrapper i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+    .search-input-wrapper input {
+        padding-left: 2.6rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        font-size: 0.92rem;
+        height: 42px;
+    }
+    .filter-select {
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        font-size: 0.9rem;
+        height: 42px;
+        color: #334155;
+    }
+    .table thead th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.9rem 1.15rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .table tbody td {
+        padding: 0.9rem 1.15rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.92rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card admin-card mb-5">
+    <!-- Header -->
+    <div class="card-header admin-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-exclamation-triangle fs-3"></i>
+            <h4 class="mb-0">Incident Management & Dispatch</h4>
+        </div>
+        <a href="{{ url_for('admin_incident_add') }}" class="btn btn-light rounded-pill px-4 fw-semibold text-danger shadow-xs">
+            <i class="bi bi-shield-exclamation me-1"></i> Report Incident
+        </a>
+    </div>
+
+    <div class="card-body p-4">
+        <!-- Stats -->
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <span class="stat-chip-item">
+                <i class="bi bi-shield-check text-primary"></i> Total Incidents: <strong class="text-primary">{{ incidents|length }}</strong>
+            </span>
+            <span class="stat-chip-item">
+                <i class="bi bi-exclamation-circle text-danger"></i> Open / Active: <strong class="text-danger">{{ incidents|rejectattr('status', 'equalto', 'resolved')|list|length }}</strong>
+            </span>
+            <span class="stat-chip-item">
+                <i class="bi bi-check-circle text-success"></i> Resolved: <strong class="text-success">{{ incidents|selectattr('status', 'equalto', 'resolved')|list|length }}</strong>
+            </span>
+            <span class="stat-chip-item">
+                <i class="bi bi-fire text-danger"></i> High Priority: <strong class="text-danger">{{ incidents|selectattr('priority', 'equalto', 'high')|list|length }}</strong>
+            </span>
+        </div>
+
+        <!-- Filter / Search -->
+        <div class="row g-3 align-items-center mb-4">
+            <div class="col-md-6 col-lg-5">
+                <div class="search-input-wrapper">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="incidentSearchInput" class="form-control" placeholder="Search incident title, description..." autocomplete="off">
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-7 d-flex justify-content-md-end gap-2">
+                <select id="priorityFilter" class="form-select filter-select w-auto">
+                    <option value="">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+                <select id="incidentStatusFilter" class="form-select filter-select w-auto">
+                    <option value="">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="investigating">Investigating</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive rounded-3 border">
+            <table class="table align-middle mb-0" id="incidentsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Incident Title</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Reported</th>
+                        <th class="text-end" style="width: 140px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="incidentsTableBody">
+                    {% for inc in incidents %}
+                    <tr class="incident-data-row" data-title="{{ inc.title|lower }}" data-desc="{{ (inc.description or '')|lower }}" data-priority="{{ (inc.priority or 'medium')|lower }}" data-status="{{ (inc.status or 'open')|lower }}">
+                        <td class="text-muted fw-semibold">{{ inc.id }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ inc.title }}</div>
+                            <div class="small text-muted">{{ inc.description or 'No extra notes provided.' }}</div>
+                        </td>
+                        <td>
+                            {% if inc.priority == 'high' %}
+                            <span class="badge rounded-pill bg-danger px-3 py-1">High</span>
+                            {% elif inc.priority == 'medium' %}
+                            <span class="badge rounded-pill bg-warning text-dark px-3 py-1">Medium</span>
+                            {% else %}
+                            <span class="badge rounded-pill bg-info text-dark px-3 py-1">Low</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.status == 'resolved' %}
+                            <span class="badge rounded-pill bg-success px-3 py-1">Resolved</span>
+                            {% elif inc.status == 'investigating' %}
+                            <span class="badge rounded-pill bg-warning text-dark px-3 py-1">Investigating</span>
+                            {% else %}
+                            <span class="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle px-3 py-1">Open</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-muted small">
+                                <i class="bi bi-clock me-1"></i> {{ inc.time_ago or 'Recently' }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('admin_incident_edit', incident_id=inc.id) }}" class="btn btn-outline-primary" title="Update Incident">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('admin_incident_delete', incident_id=inc.id) }}" class="btn btn-outline-danger" title="Delete Incident" onclick="return confirm('Are you sure you want to delete this incident record?');">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('incidentSearchInput');
+    const priorityFilter = document.getElementById('priorityFilter');
+    const statusFilter = document.getElementById('incidentStatusFilter');
+    const rows = Array.from(document.querySelectorAll('.incident-data-row'));
+
+    function filterIncidents() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        const prio = (priorityFilter.value || '').trim().toLowerCase();
+        const stat = (statusFilter.value || '').trim().toLowerCase();
+
+        rows.forEach(row => {
+            const title = row.getAttribute('data-title') || '';
+            const desc = row.getAttribute('data-desc') || '';
+            const priority = row.getAttribute('data-priority') || '';
+            const status = row.getAttribute('data-status') || '';
+
+            const matchesQuery = !query || title.includes(query) || desc.includes(query);
+            const matchesPriority = !prio || priority === prio;
+            const matchesStatus = !stat || status === stat;
+
+            row.style.display = (matchesQuery && matchesPriority && matchesStatus) ? '' : 'none';
+        });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterIncidents);
+    if (priorityFilter) priorityFilter.addEventListener('change', filterIncidents);
+    if (statusFilter) statusFilter.addEventListener('change', filterIncidents);
+});
+</script>
+{% endblock %}

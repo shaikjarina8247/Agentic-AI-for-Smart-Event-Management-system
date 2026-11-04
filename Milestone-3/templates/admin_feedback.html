@@ -1,0 +1,217 @@
+ {% extends "base.html" %}
+
+{% block title %}Attendee Feedback Management — EventOps AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-card {
+        border: none;
+        border-radius: 1.25rem;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+    }
+    .admin-header {
+        background: linear-gradient(135deg, #1877f2 0%, #6338e8 55%, #7c3aed 100%);
+        color: #ffffff;
+        padding: 1.35rem 1.85rem;
+        border: none;
+    }
+    .admin-header h4 {
+        font-weight: 700;
+        letter-spacing: -0.2px;
+        font-size: 1.35rem;
+    }
+    .stat-chip-item {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 50px;
+        padding: 0.38rem 1rem;
+        font-size: 0.88rem;
+        font-weight: 500;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .search-input-wrapper {
+        position: relative;
+    }
+    .search-input-wrapper i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+    .search-input-wrapper input {
+        padding-left: 2.6rem;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        font-size: 0.92rem;
+        height: 42px;
+    }
+    .filter-select {
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        font-size: 0.9rem;
+        height: 42px;
+        color: #334155;
+    }
+    .table thead th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.9rem 1.15rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .table tbody td {
+        padding: 0.9rem 1.15rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.92rem;
+    }
+    .star-gold {
+        color: #f59e0b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card admin-card mb-5">
+    <!-- Header -->
+    <div class="card-header admin-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-star fs-3"></i>
+            <h4 class="mb-0">Attendee Feedback Management</h4>
+        </div>
+        <span class="badge rounded-pill px-3 py-2 fw-medium text-white" style="background: rgba(255,255,255,0.2);">
+            <i class="bi bi-chat-quote me-1"></i> Total Feedbacks: {{ feedbacks|length }}
+        </span>
+    </div>
+
+    <div class="card-body p-4">
+        <!-- Stats -->
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <span class="stat-chip-item">
+                <i class="bi bi-chat-left-text text-primary"></i> Submissions: <strong class="text-primary">{{ feedbacks|length }}</strong>
+            </span>
+            <span class="stat-chip-item">
+                <i class="bi bi-star-fill text-warning"></i> Avg Rating:
+                <strong class="text-warning">
+                    {% if feedbacks|length > 0 %}
+                        {{ ((feedbacks|map(attribute='rating')|sum) / feedbacks|length)|round(1) }}/5
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </strong>
+            </span>
+            <span class="stat-chip-item">
+                <i class="bi bi-emoji-smile text-success"></i> 5-Star Reviews: <strong class="text-success">{{ feedbacks|selectattr('rating', 'equalto', 5)|list|length }}</strong>
+            </span>
+        </div>
+
+        <!-- Filter / Search -->
+        <div class="row g-3 align-items-center mb-4">
+            <div class="col-md-6 col-lg-5">
+                <div class="search-input-wrapper">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="feedbackSearchInput" class="form-control" placeholder="Search event, user, comment..." autocomplete="off">
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-7 d-flex justify-content-md-end gap-2">
+                <select id="ratingFilter" class="form-select filter-select w-auto">
+                    <option value="">All Ratings</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive rounded-3 border">
+            <table class="table align-middle mb-0" id="feedbacksTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Event</th>
+                        <th>Attendee</th>
+                        <th>Rating</th>
+                        <th>Review Comments</th>
+                        <th>Submitted At</th>
+                        <th class="text-end" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="feedbacksTableBody">
+                    {% for item in feedbacks %}
+                    <tr class="feedback-data-row" data-event="{{ item.event.title|lower }}" data-user="{{ item.user.name|lower }}" data-comment="{{ (item.comment or '')|lower }}" data-rating="{{ item.rating }}">
+                        <td class="text-muted fw-semibold">{{ item.id }}</td>
+                        <td class="fw-bold text-dark">{{ item.event.title }}</td>
+                        <td class="text-secondary fw-medium">{{ item.user.name }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1">
+                                {% for s in range(item.rating) %}
+                                <i class="bi bi-star-fill star-gold"></i>
+                                {% endfor %}
+                                {% for s in range(5 - item.rating) %}
+                                <i class="bi bi-star text-muted opacity-50"></i>
+                                {% endfor %}
+                                <span class="ms-1 fw-bold text-dark small">{{ item.rating }}.0</span>
+                            </div>
+                        </td>
+                        <td class="text-secondary" style="max-width: 320px;">
+                            {{ item.comment or 'No text review provided.' }}
+                        </td>
+                        <td>
+                            <span class="small text-muted">
+                                {{ item.created_at.strftime('%Y-%m-%d') if item.created_at else 'Recent' }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('admin_feedback_delete', feedback_id=item.id) }}" class="btn btn-sm btn-outline-danger" title="Delete Feedback" onclick="return confirm('Are you sure you want to delete this feedback entry?');">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('feedbackSearchInput');
+    const ratingFilter = document.getElementById('ratingFilter');
+    const rows = Array.from(document.querySelectorAll('.feedback-data-row'));
+
+    function filterFeedback() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        const rating = (ratingFilter.value || '').trim();
+
+        rows.forEach(row => {
+            const event = row.getAttribute('data-event') || '';
+            const user = row.getAttribute('data-user') || '';
+            const comment = row.getAttribute('data-comment') || '';
+            const rowRating = row.getAttribute('data-rating') || '';
+
+            const matchesQuery = !query || event.includes(query) || user.includes(query) || comment.includes(query);
+            const matchesRating = !rating || rowRating === rating;
+
+            row.style.display = (matchesQuery && matchesRating) ? '' : 'none';
+        });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterFeedback);
+    if (ratingFilter) ratingFilter.addEventListener('change', filterFeedback);
+});
+</script>
+{% endblock %}
